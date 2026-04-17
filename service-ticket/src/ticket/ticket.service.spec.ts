@@ -28,6 +28,7 @@ describe('TicketService', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOneById: jest.fn(),
+            delete: jest.fn(),
           },
         },
       ],
@@ -145,6 +146,51 @@ describe('TicketService', () => {
       });
 
       await expect(ticketService.findOne({} as any)).rejects.toThrow(
+        RpcException,
+      );
+    });
+  });
+
+  describe('delete', () => {
+    it('should return deleted Ticket', async () => {
+      const deleteArg = 'id123';
+      const ticket = createTicket();
+
+      jest.spyOn(ticketRepository, 'delete').mockResolvedValue(ticket as any);
+
+      const result = await ticketService.delete(deleteArg);
+
+      expect(ticketRepository.delete).toHaveBeenCalledWith(deleteArg);
+      expect(result).toEqual(ticket);
+    });
+
+    it('should return error: Ticket not found', async () => {
+      jest.spyOn(ticketRepository, 'delete').mockReturnValue(null as any);
+
+      await expect(ticketService.delete({} as any)).rejects.toThrow(
+        'Ticket not found',
+      );
+    });
+
+    it('should return error: error in format id', async () => {
+      const customError = new Error();
+      customError['message'] = '... objectId failed ...';
+
+      jest.spyOn(ticketRepository, 'delete').mockImplementation(() => {
+        throw customError;
+      });
+
+      await expect(ticketService.delete({} as any)).rejects.toThrow(
+        'error in format id',
+      );
+    });
+
+    it('should return generic error', async () => {
+      jest.spyOn(ticketRepository, 'delete').mockImplementation(() => {
+        throw new Error();
+      });
+
+      await expect(ticketService.delete({} as any)).rejects.toThrow(
         RpcException,
       );
     });
