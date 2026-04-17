@@ -126,12 +126,29 @@ export class TicketService {
 
       if (!(error instanceof Error)) throw new RpcException('Unusual error');
 
-      if (String(error.message).toLowerCase().includes('objectid failed'))
-        throw new RpcException('error in format id');
-
       throw new RpcException(error.message);
     }
   }
 
-  async cancelReserve(id: string) {}
+  async cancelReserve(id: string) {
+    loggerMethod(this.logger, this.cancelReserve.name, id);
+    try {
+      const ticket = await this.findOne(id);
+
+      if (ticket.status !== StatusTicket.RESERVED)
+        throw new RpcException('Ticket not RESERVED');
+
+      const ticketUpdated = await this.update(id, {
+        status: StatusTicket.AVAILABLE,
+      });
+
+      return ticketUpdated;
+    } catch (error: any) {
+      loggerError(this.logger, this.cancelReserve.name, error);
+
+      if (!(error instanceof Error)) throw new RpcException('Unusual error');
+
+      throw new RpcException(error.message);
+    }
+  }
 }
