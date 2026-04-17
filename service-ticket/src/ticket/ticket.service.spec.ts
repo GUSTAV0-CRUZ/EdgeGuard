@@ -29,6 +29,7 @@ describe('TicketService', () => {
             findAll: jest.fn(),
             findOneById: jest.fn(),
             delete: jest.fn(),
+            update: jest.fn(),
           },
         },
       ],
@@ -191,6 +192,73 @@ describe('TicketService', () => {
       });
 
       await expect(ticketService.delete({} as any)).rejects.toThrow(
+        RpcException,
+      );
+    });
+  });
+
+  describe('reserve', () => {
+    it('should return reserved Ticket', async () => {
+      const reserveArg = 'id123';
+      const ticket = createTicket();
+      const ticketUpdated = createTicket(undefined, StatusTicket.RESERVED);
+
+      jest.spyOn(ticketService, 'findOne').mockResolvedValue(ticket as any);
+      jest
+        .spyOn(ticketRepository, 'update')
+        .mockResolvedValue(ticketUpdated as any);
+
+      const result = await ticketService.reserve(reserveArg);
+
+      expect(ticketService.findOne).toHaveBeenCalledWith(reserveArg);
+      expect(ticketRepository.update).toHaveBeenCalledWith(reserveArg, {
+        status: StatusTicket.RESERVED,
+      });
+      expect(result).toEqual(ticketUpdated);
+    });
+
+    it('should return error: Ticket not AVAILABLE', async () => {
+      const ticket = createTicket(undefined, StatusTicket.RESERVED);
+
+      jest.spyOn(ticketService, 'findOne').mockReturnValue(ticket as any);
+
+      await expect(ticketService.reserve({} as any)).rejects.toThrow(
+        'Ticket not AVAILABLE',
+      );
+    });
+
+    it('should return error: Ticket not found', async () => {
+      const ticket = createTicket();
+
+      jest.spyOn(ticketService, 'findOne').mockReturnValue(ticket as any);
+      jest.spyOn(ticketRepository, 'update').mockReturnValue(null as any);
+
+      await expect(ticketService.reserve({} as any)).rejects.toThrow(
+        'Ticket not found',
+      );
+    });
+
+    it('should return error: error in format id', async () => {
+      const ticket = createTicket();
+      const customError = new Error();
+      customError['message'] = '... objectId failed ...';
+
+      jest.spyOn(ticketService, 'findOne').mockReturnValue(ticket as any);
+      jest.spyOn(ticketRepository, 'update').mockImplementation(() => {
+        throw customError;
+      });
+
+      await expect(ticketService.reserve({} as any)).rejects.toThrow(
+        'error in format id',
+      );
+    });
+
+    it('should return generic error', async () => {
+      jest.spyOn(ticketService, 'findOne').mockImplementation(() => {
+        throw new Error();
+      });
+
+      await expect(ticketService.reserve({} as any)).rejects.toThrow(
         RpcException,
       );
     });
