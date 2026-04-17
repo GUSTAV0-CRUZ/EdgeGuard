@@ -5,7 +5,7 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class TicketSchemaDb implements Ticket {
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, unique: true })
   number!: number;
 
   @Prop({ enum: StatusTicket, type: String, default: StatusTicket.PENDING })
