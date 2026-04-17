@@ -6,6 +6,7 @@ import { Ticket } from './entities/ticket.entitie';
 import { TicketRepository } from './repository/ticket.repository';
 import { loggerMethod } from '../utils/logger-method';
 import { loggerError } from '../utils/logger-error';
+import { StatusTicket } from './enums/status-ticket.enum';
 
 @Injectable()
 export class TicketService {
@@ -107,7 +108,30 @@ export class TicketService {
     }
   }
 
-  async reserve(id: string) {}
+  async reserve(id: string): Promise<Ticket> {
+    loggerMethod(this.logger, this.reserve.name, id);
+    try {
+      const ticket = await this.findOne(id);
+
+      if (ticket.status !== StatusTicket.AVAILABLE)
+        throw new RpcException('Ticket not AVAILABLE');
+
+      const ticketUpdated = await this.update(id, {
+        status: StatusTicket.RESERVED,
+      });
+
+      return ticketUpdated;
+    } catch (error: any) {
+      loggerError(this.logger, this.reserve.name, error);
+
+      if (!(error instanceof Error)) throw new RpcException('Unusual error');
+
+      if (String(error.message).toLowerCase().includes('objectid failed'))
+        throw new RpcException('error in format id');
+
+      throw new RpcException(error.message);
+    }
+  }
 
   async cancelReserve(id: string) {}
 }
