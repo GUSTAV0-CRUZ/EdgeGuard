@@ -9,7 +9,7 @@ import {
 import { Channel, Message } from 'amqplib';
 import { TicketService } from './ticket.service';
 import { CreateTicketDto } from './dtos/create-ticket.dto';
-import { catchResilienceMessage } from '../utils/catchResilienceMessage';
+import { catchResilienceMessage } from '../utils/catch-resilience-message';
 
 @Controller('ticket')
 export class TicketController {
