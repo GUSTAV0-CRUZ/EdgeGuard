@@ -9,6 +9,7 @@ import {
 import { Channel, Message } from 'amqplib';
 import { TicketService } from './ticket.service';
 import { CreateTicketDto } from './dtos/create-ticket.dto';
+import { catchResilienceMessage } from '../utils/catchResilienceMessage';
 
 @Controller('ticket')
 export class TicketController {
@@ -26,8 +27,7 @@ export class TicketController {
       await this.ticketService.create(createTicketDto);
       channel.ack(originalMsg);
     } catch (error: any) {
-      channel.ack(originalMsg);
-      throw error;
+      catchResilienceMessage(error, channel, originalMsg);
     }
   }
 
@@ -37,11 +37,11 @@ export class TicketController {
     const originalMsg = ctx.getMessage() as Message;
 
     try {
-      await this.ticketService.findAll();
+      const tickets = await this.ticketService.findAll();
       channel.ack(originalMsg);
+      return tickets;
     } catch (error: any) {
-      channel.ack(originalMsg);
-      throw error;
+      catchResilienceMessage(error, channel, originalMsg);
     }
   }
 
@@ -51,11 +51,11 @@ export class TicketController {
     const originalMsg = ctx.getMessage() as Message;
 
     try {
-      await this.ticketService.findOne(id);
+      const ticket = await this.ticketService.findOne(id);
       channel.ack(originalMsg);
+      return ticket;
     } catch (error: any) {
-      channel.ack(originalMsg);
-      throw error;
+      catchResilienceMessage(error, channel, originalMsg);
     }
   }
 
@@ -68,8 +68,7 @@ export class TicketController {
       await this.ticketService.delete(id);
       channel.ack(originalMsg);
     } catch (error: any) {
-      channel.ack(originalMsg);
-      throw error;
+      catchResilienceMessage(error, channel, originalMsg);
     }
   }
 
@@ -82,8 +81,7 @@ export class TicketController {
       await this.ticketService.reserve(id);
       channel.ack(originalMsg);
     } catch (error: any) {
-      channel.ack(originalMsg);
-      throw error;
+      catchResilienceMessage(error, channel, originalMsg);
     }
   }
 
@@ -96,8 +94,7 @@ export class TicketController {
       await this.ticketService.cancelReserve(id);
       channel.ack(originalMsg);
     } catch (error: any) {
-      channel.ack(originalMsg);
-      throw error;
+      catchResilienceMessage(error, channel, originalMsg);
     }
   }
 }
