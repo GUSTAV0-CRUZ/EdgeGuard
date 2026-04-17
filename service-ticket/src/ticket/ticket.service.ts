@@ -31,7 +31,18 @@ export class TicketService {
     }
   }
 
-  async findAll() {}
+  async findAll() {
+    loggerMethod(this.logger, this.findAll.name);
+    try {
+      return await this.ticketRepository.findAll();
+    } catch (error: any) {
+      loggerError(this.logger, this.findAll.name, error);
+
+      if (!(error instanceof Error)) throw new RpcException('Unusual error');
+
+      throw new RpcException(String(error.message));
+    }
+  }
 
   async findOne(id: string) {}
 
