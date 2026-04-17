@@ -87,7 +87,25 @@ export class TicketService {
     }
   }
 
-  async delete(id: string) {}
+  async delete(id: string) {
+    loggerMethod(this.logger, this.delete.name, id);
+    try {
+      const ticket = await this.ticketRepository.delete(id);
+
+      if (!ticket) throw new RpcException('Ticket not found');
+
+      return ticket;
+    } catch (error: any) {
+      loggerError(this.logger, this.delete.name, error);
+
+      if (!(error instanceof Error)) throw new RpcException('Unusual error');
+
+      if (String(error.message).toLowerCase().includes('objectid failed'))
+        throw new RpcException('error in format id');
+
+      throw new RpcException(error.message);
+    }
+  }
 
   async reserve(id: string) {}
 
