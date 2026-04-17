@@ -26,6 +26,7 @@ describe('TicketService', () => {
           provide: TicketRepository,
           useValue: {
             create: jest.fn(),
+            findAll: jest.fn(),
           },
         },
       ],
@@ -75,6 +76,29 @@ describe('TicketService', () => {
       await expect(ticketService.create({} as any)).rejects.toThrow(
         RpcException,
       );
+    });
+  });
+
+  describe('findAll', () => {
+    it('should return array of Ticket', async () => {
+      const ticket = createTicket();
+
+      jest
+        .spyOn(ticketRepository, 'findAll')
+        .mockResolvedValue([ticket] as any);
+
+      const result = await ticketService.findAll();
+
+      expect(ticketRepository.findAll).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([ticket]);
+    });
+
+    it('should return generic error', async () => {
+      jest.spyOn(ticketRepository, 'findAll').mockImplementation(() => {
+        throw new Error();
+      });
+
+      await expect(ticketService.findAll()).rejects.toThrow(RpcException);
     });
   });
 });
