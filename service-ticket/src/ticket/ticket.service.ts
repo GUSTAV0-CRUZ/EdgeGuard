@@ -1,10 +1,35 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateTicketDto } from './dtos/create-ticket.dto';
 import { UpdateTicketDto } from './dtos/update-ticket.dto';
+import { RpcException } from '@nestjs/microservices';
+import { Ticket } from './entities/ticket.entitie';
+import { TicketRepository } from './repository/ticket.repository';
+import { loggerMethod } from '../utils/logger-method';
+import { loggerError } from '../utils/logger-error';
 
 @Injectable()
 export class TicketService {
-  async create(createTicketDto: CreateTicketDto) {}
+  private readonly logger = new Logger(TicketService.name);
+
+  constructor(private readonly ticketRepository: TicketRepository) {}
+
+  async create(createTicketDto: CreateTicketDto): Promise<Ticket> {
+    loggerMethod(this.logger, this.create.name, createTicketDto);
+    try {
+      return await this.ticketRepository.create({
+        number: createTicketDto.number,
+      });
+    } catch (error: any) {
+      loggerError(this.logger, this.create.name, error);
+
+      if (!(error instanceof Error)) throw new RpcException('Unusual error');
+
+      if (String(error.message).toLowerCase().includes('duplicate key'))
+        throw new RpcException('Key "number" is duplicate');
+
+      throw new RpcException(String(error.message));
+    }
+  }
 
   async findAll() {}
 
