@@ -130,7 +130,7 @@ export class TicketService {
     }
   }
 
-  async cancelReserve(id: string) {
+  async cancelReserve(id: string): Promise<Ticket> {
     loggerMethod(this.logger, this.cancelReserve.name, id);
     try {
       const ticket = await this.findOne(id);
