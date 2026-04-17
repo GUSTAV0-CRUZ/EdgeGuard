@@ -27,11 +27,11 @@ export class TicketService {
       if (String(error.message).toLowerCase().includes('duplicate key'))
         throw new RpcException('Key "number" is duplicate');
 
-      throw new RpcException(String(error.message));
+      throw new RpcException(error.message);
     }
   }
 
-  async findAll() {
+  async findAll(): Promise<Ticket[]> {
     loggerMethod(this.logger, this.findAll.name);
     try {
       return await this.ticketRepository.findAll();
@@ -40,11 +40,29 @@ export class TicketService {
 
       if (!(error instanceof Error)) throw new RpcException('Unusual error');
 
-      throw new RpcException(String(error.message));
+      throw new RpcException(error.message);
     }
   }
 
-  async findOne(id: string) {}
+  async findOne(id: string): Promise<Ticket> {
+    loggerMethod(this.logger, this.findOne.name, id);
+    try {
+      const ticket = await this.ticketRepository.findOneById(id);
+
+      if (!ticket) throw new RpcException('Ticket not found');
+
+      return ticket;
+    } catch (error: any) {
+      loggerError(this.logger, this.findOne.name, error);
+
+      if (!(error instanceof Error)) throw new RpcException('Unusual error');
+
+      if (String(error.message).toLowerCase().includes('objectid failed'))
+        throw new RpcException('error in format id');
+
+      throw new RpcException(error.message);
+    }
+  }
 
   private async update(id: string, updateTicketDto: UpdateTicketDto) {}
 
