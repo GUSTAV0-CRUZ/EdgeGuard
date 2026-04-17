@@ -8,7 +8,7 @@ import { RpcException } from '@nestjs/microservices';
 
 const createTicket = (id?: string, status?: StatusTicket, number?: number) => {
   return {
-    _id: id ?? 'id123',
+    _id: id ?? 'idTicket123',
     status: status ?? StatusTicket.AVAILABLE,
     number: number ?? 1,
   };
@@ -27,6 +27,7 @@ describe('TicketService', () => {
           useValue: {
             create: jest.fn(),
             findAll: jest.fn(),
+            findOneById: jest.fn(),
           },
         },
       ],
@@ -99,6 +100,53 @@ describe('TicketService', () => {
       });
 
       await expect(ticketService.findAll()).rejects.toThrow(RpcException);
+    });
+  });
+
+  describe('findOne', () => {
+    it('should return Ticket', async () => {
+      const findOneArg = 'id123';
+      const ticket = createTicket();
+
+      jest
+        .spyOn(ticketRepository, 'findOneById')
+        .mockResolvedValue(ticket as any);
+
+      const result = await ticketService.findOne(findOneArg);
+
+      expect(ticketRepository.findOneById).toHaveBeenCalledWith(findOneArg);
+      expect(result).toEqual(ticket);
+    });
+
+    it('should return error: Ticket not found', async () => {
+      jest.spyOn(ticketRepository, 'findOneById').mockReturnValue(null as any);
+
+      await expect(ticketService.findOne({} as any)).rejects.toThrow(
+        'Ticket not found',
+      );
+    });
+
+    it('should return error: error in format id', async () => {
+      const customError = new Error();
+      customError['message'] = '... objectId failed ...';
+
+      jest.spyOn(ticketRepository, 'findOneById').mockImplementation(() => {
+        throw customError;
+      });
+
+      await expect(ticketService.findOne({} as any)).rejects.toThrow(
+        'error in format id',
+      );
+    });
+
+    it('should return generic error', async () => {
+      jest.spyOn(ticketRepository, 'findOneById').mockImplementation(() => {
+        throw new Error();
+      });
+
+      await expect(ticketService.findOne({} as any)).rejects.toThrow(
+        RpcException,
+      );
     });
   });
 });
