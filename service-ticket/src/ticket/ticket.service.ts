@@ -64,7 +64,28 @@ export class TicketService {
     }
   }
 
-  private async update(id: string, updateTicketDto: UpdateTicketDto) {}
+  private async update(
+    id: string,
+    updateTicketDto: UpdateTicketDto,
+  ): Promise<Ticket> {
+    loggerMethod(this.logger, this.update.name, id);
+    try {
+      const ticket = await this.ticketRepository.update(id, updateTicketDto);
+
+      if (!ticket) throw new RpcException('Ticket not found');
+
+      return ticket;
+    } catch (error: any) {
+      loggerError(this.logger, this.update.name, error);
+
+      if (!(error instanceof Error)) throw new RpcException('Unusual error');
+
+      if (String(error.message).toLowerCase().includes('objectid failed'))
+        throw new RpcException('error in format id');
+
+      throw new RpcException(error.message);
+    }
+  }
 
   async delete(id: string) {}
 
