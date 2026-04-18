@@ -43,6 +43,21 @@ services:
     networks:
       - edgeguard-network
 
+  #SERVICES
+  service-ticket:
+    build:
+      context: ./service-ticket
+      dockerfile: Dockerfile
+    container_name: service-ticket-local
+    restart: always
+    env_file:
+      - ./service-ticket/.env
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - edgeguard-network
+
 networks:
   edgeguard-network:
     driver: bridge
