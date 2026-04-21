@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { CreateTicketDto } from './dtos/create-ticket.dto';
@@ -52,21 +53,14 @@ export class TicketController {
   }
 
   @HttpCode(202)
-  @Post(':id/reserve-ticket')
+  @Patch(':id/reserve-ticket')
   reserve(@Param('id') id: string) {
     return this.serviceTicketclientProxy.emit('reserve-ticket', id);
   }
 
-  // @EventPattern('cancelReserve-ticket')
-  // async cancelReserve(@Payload() id: string, @Ctx() ctx: RmqContext) {
-  //   const channel = ctx.getChannelRef() as Channel;
-  //   const originalMsg = ctx.getMessage() as Message;
-
-  //   try {
-  //     await this.ticketService.cancelReserve(id);
-  //     channel.ack(originalMsg);
-  //   } catch (error: any) {
-  //     catchResilienceMessage(error, channel, originalMsg);
-  //   }
-  // }
+  @HttpCode(202)
+  @Patch(':id/cancelReserve-ticket')
+  cancelReserve(@Param('id') id: string) {
+    return this.serviceTicketclientProxy.emit('cancelReserve-ticket', id);
+  }
 }
