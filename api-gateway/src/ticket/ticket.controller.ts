@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { CreateTicketDto } from './dtos/create-ticket.dto';
 import { ClientProxyRmqService } from '../client-proxy-rmq/client-proxy-rmq.service';
 import { ClientProxy } from '@nestjs/microservices';
@@ -37,31 +45,17 @@ export class TicketController {
     return this.serviceTicketclientProxy.send('findOne-ticket', id);
   }
 
-  // @EventPattern('delete-ticket')
-  // async delete(@Payload() id: string, @Ctx() ctx: RmqContext) {
-  //   const channel = ctx.getChannelRef() as Channel;
-  //   const originalMsg = ctx.getMessage() as Message;
+  @HttpCode(202)
+  @Delete(':id')
+  delete(@Param('id') id: string) {
+    return this.serviceTicketclientProxy.emit('delete-ticket', id);
+  }
 
-  //   try {
-  //     await this.ticketService.delete(id);
-  //     channel.ack(originalMsg);
-  //   } catch (error: any) {
-  //     catchResilienceMessage(error, channel, originalMsg);
-  //   }
-  // }
-
-  // @EventPattern('reserve-ticket')
-  // async reserve(@Payload() id: string, @Ctx() ctx: RmqContext) {
-  //   const channel = ctx.getChannelRef() as Channel;
-  //   const originalMsg = ctx.getMessage() as Message;
-
-  //   try {
-  //     await this.ticketService.reserve(id);
-  //     channel.ack(originalMsg);
-  //   } catch (error: any) {
-  //     catchResilienceMessage(error, channel, originalMsg);
-  //   }
-  // }
+  @HttpCode(202)
+  @Post(':id/reserve-ticket')
+  reserve(@Param('id') id: string) {
+    return this.serviceTicketclientProxy.emit('reserve-ticket', id);
+  }
 
   // @EventPattern('cancelReserve-ticket')
   // async cancelReserve(@Payload() id: string, @Ctx() ctx: RmqContext) {
