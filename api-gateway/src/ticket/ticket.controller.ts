@@ -13,19 +13,26 @@ import { ClientProxyRmqService } from '../client-proxy-rmq/client-proxy-rmq.serv
 import { ClientProxy } from '@nestjs/microservices';
 import { ApiResponse } from '@nestjs/swagger';
 import { ResponseTicketDto } from './dtos/response-ticket.dto';
+import { RedisService } from '../redis/redis.service';
+import { lastValueFrom } from 'rxjs';
 
 @Controller('ticket')
 export class TicketController {
   private readonly serviceTicketclientProxy: ClientProxy;
 
-  constructor(ticketService: ClientProxyRmqService) {
+  constructor(
+    ticketService: ClientProxyRmqService,
+    private redisService: RedisService,
+  ) {
     this.serviceTicketclientProxy = ticketService.getServiceTicketclientProxy();
   }
 
   @HttpCode(202)
   @Post()
-  create(@Body() createTicketDto: CreateTicketDto) {
-    return this.serviceTicketclientProxy.emit('create-ticket', createTicketDto);
+  async create(@Body() createTicketDto: CreateTicketDto) {
+    this.serviceTicketclientProxy.emit('create-ticket', createTicketDto);
+    await this.redisService.delKeyCache('ticket:all');
+    return;
   }
 
   @ApiResponse({
@@ -33,8 +40,23 @@ export class TicketController {
     type: [ResponseTicketDto],
   })
   @Get()
-  findAll() {
-    return this.serviceTicketclientProxy.send('findAll-ticket', '');
+  async findAll(): Promise<ResponseTicketDto[]> {
+    const cache =
+      await this.redisService.getCache<ResponseTicketDto[]>('ticket:all');
+
+    if (cache) return cache;
+
+    const tickets = await lastValueFrom<ResponseTicketDto[]>(
+      this.serviceTicketclientProxy.send('findAll-ticket', ''),
+    );
+
+    await this.redisService.setCache<ResponseTicketDto[]>(
+      'ticket:all',
+      tickets,
+      30,
+    );
+
+    return tickets;
   }
 
   @ApiResponse({
@@ -42,25 +64,50 @@ export class TicketController {
     type: ResponseTicketDto,
   })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.serviceTicketclientProxy.send('findOne-ticket', id);
+  async findOne(@Param('id') id: string): Promise<ResponseTicketDto> {
+    const cache = await this.redisService.getCache<ResponseTicketDto>(
+      `ticket:${id}`,
+    );
+
+    if (cache) return cache;
+
+    const tickets = await lastValueFrom<ResponseTicketDto>(
+      this.serviceTicketclientProxy.send('findOne-ticket', id),
+    );
+
+    await this.redisService.setCache<ResponseTicketDto>(
+      `ticket:${id}`,
+      tickets,
+      5,
+    );
+
+    return tickets;
   }
 
   @HttpCode(202)
   @Delete(':id')
-  delete(@Param('id') id: string) {
-    return this.serviceTicketclientProxy.emit('delete-ticket', id);
+  async delete(@Param('id') id: string) {
+    this.serviceTicketclientProxy.emit('delete-ticket', id);
+    await this.redisService.delKeyCache(`ticket:${id}`);
+    await this.redisService.delKeyCache('ticket:all');
+    return;
   }
 
   @HttpCode(202)
   @Patch(':id/reserve-ticket')
-  reserve(@Param('id') id: string) {
-    return this.serviceTicketclientProxy.emit('reserve-ticket', id);
+  async reserve(@Param('id') id: string) {
+    this.serviceTicketclientProxy.emit('reserve-ticket', id);
+    await this.redisService.delKeyCache(`ticket:${id}`);
+    await this.redisService.delKeyCache('ticket:all');
+    return;
   }
 
   @HttpCode(202)
   @Patch(':id/cancelReserve-ticket')
-  cancelReserve(@Param('id') id: string) {
-    return this.serviceTicketclientProxy.emit('cancelReserve-ticket', id);
+  async cancelReserve(@Param('id') id: string) {
+    this.serviceTicketclientProxy.emit('cancelReserve-ticket', id);
+    await this.redisService.delKeyCache(`ticket:${id}`);
+    await this.redisService.delKeyCache('ticket:all');
+    return;
   }
 }
