@@ -41,4 +41,12 @@ export class RedisService {
       this.loggerError(error, this.setCache.name);
     }
   }
+
+  async delKeyCache(key: string): Promise<void> {
+    try {
+      await this.cacheManager.del(key);
+    } catch (error: any) {
+      this.loggerError(error, this.setCache.name);
+    }
+  }
 }

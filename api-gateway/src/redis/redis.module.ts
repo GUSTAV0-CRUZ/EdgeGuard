@@ -21,5 +21,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
   ],
   providers: [RedisService],
+  exports: [RedisService],
 })
 export class RedisModule {}
