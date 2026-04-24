@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateTicketDto } from './dtos/create-ticket.dto';
 import { ClientProxyRmqService } from '../client-proxy-rmq/client-proxy-rmq.service';
@@ -15,6 +16,7 @@ import { ApiResponse } from '@nestjs/swagger';
 import { ResponseTicketDto } from './dtos/response-ticket.dto';
 import { RedisService } from '../redis/redis.service';
 import { lastValueFrom } from 'rxjs';
+import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 
 @Controller('ticket')
 export class TicketController {
@@ -93,6 +95,7 @@ export class TicketController {
     return;
   }
 
+  @UseGuards(RateLimitGuard)
   @HttpCode(202)
   @Patch(':id/reserve-ticket')
   async reserve(@Param('id') id: string) {
@@ -102,6 +105,7 @@ export class TicketController {
     return;
   }
 
+  @UseGuards(RateLimitGuard)
   @HttpCode(202)
   @Patch(':id/cancelReserve-ticket')
   async cancelReserve(@Param('id') id: string) {
