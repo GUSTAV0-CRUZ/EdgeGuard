@@ -12,7 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         store: await redisStore({
-          url: `redis://${configService.get('REDIS_HOST')}:${configService.get('REDIS_PORT')}`,
+          url: configService.get('REDIS_URL'),
           password: configService.get('REDIS_PASSWORD'),
           ttl: configService.get('REDIS_TTL'),
         }),

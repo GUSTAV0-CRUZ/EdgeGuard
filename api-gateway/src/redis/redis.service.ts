@@ -1,12 +1,16 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
+import { Redis } from 'ioredis';
 
 @Injectable()
 export class RedisService {
   private readonly logger = new Logger(RedisService.name);
+  private redisClient: Redis;
 
-  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
+  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
+    this.redisClient = new Redis(String(process.env.REDIS_URL));
+  }
 
   private loggerError(error: any, methodName: string) {
     if (!(error instanceof Error)) {
@@ -48,5 +52,22 @@ export class RedisService {
     } catch (error: any) {
       this.loggerError(error, this.setCache.name);
     }
+  }
+
+  async rateLimit(
+    elemetKey: string,
+    limitReq: number = 6,
+    ttl: number = 60,
+  ): Promise<boolean> {
+    const key = `rateLimite:${elemetKey}`;
+
+    const currentRequests = await this.redisClient.incr(key);
+
+    if (currentRequests === 1) await this.redisClient.expire(key, ttl);
+
+    if (currentRequests > limitReq)
+      throw new HttpException('too many requests', 429);
+
+    return true;
   }
 }
