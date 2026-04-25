@@ -1,16 +1,16 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
-import { Redis } from 'ioredis';
+import { RedisClient } from './providers/redis-client.provider';
 
 @Injectable()
 export class RedisService {
   private readonly logger = new Logger(RedisService.name);
-  private redisClient: Redis;
 
-  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
-    this.redisClient = new Redis(String(process.env.REDIS_URL));
-  }
+  constructor(
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly redisClient: RedisClient,
+  ) {}
 
   private loggerError(error: any, methodName: string) {
     if (!(error instanceof Error)) {
