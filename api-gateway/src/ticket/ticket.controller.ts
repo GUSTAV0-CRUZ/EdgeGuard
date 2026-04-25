@@ -99,17 +99,32 @@ export class TicketController {
   @HttpCode(202)
   @Patch(':id/reserve-ticket')
   async reserve(@Param('id') id: string) {
-    this.serviceTicketclientProxy.emit('reserve-ticket', id);
+    await this.redisService.acquireLock(id);
+
+    try {
+      this.serviceTicketclientProxy.emit('reserve-ticket', id);
+    } catch (error: any) {
+      await this.redisService.releaseLock(id);
+      throw error;
+    }
+
     await this.redisService.delKeyCache(`ticket:${id}`);
     await this.redisService.delKeyCache('ticket:all');
-    return;
   }
 
   @UseGuards(RateLimitGuard)
   @HttpCode(202)
   @Patch(':id/cancelReserve-ticket')
   async cancelReserve(@Param('id') id: string) {
-    this.serviceTicketclientProxy.emit('cancelReserve-ticket', id);
+    await this.redisService.acquireLock(id);
+
+    try {
+      this.serviceTicketclientProxy.emit('cancelReserve-ticket', id);
+    } catch (error: any) {
+      await this.redisService.releaseLock(id);
+      throw error;
+    }
+
     await this.redisService.delKeyCache(`ticket:${id}`);
     await this.redisService.delKeyCache('ticket:all');
     return;
