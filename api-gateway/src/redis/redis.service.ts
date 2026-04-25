@@ -70,4 +70,26 @@ export class RedisService {
 
     return true;
   }
+
+  async acquireLock(id: string, ttl: number = 5): Promise<boolean> {
+    const key = `lock:ticket:${id}`;
+
+    const acquireLock = await this.redisClient.set(
+      key,
+      'locked',
+      'EX',
+      ttl,
+      'NX',
+    );
+
+    if (!acquireLock)
+      throw new HttpException('conflict in required resource', 409);
+
+    return true;
+  }
+
+  async releaseLock(id: string): Promise<void> {
+    const key = `lock:ticket:${id}`;
+    await this.redisClient.del(key);
+  }
 }
