@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CreateTicketDto } from './dtos/create-ticket.dto';
 import { ClientProxyRmqService } from '../client-proxy-rmq/client-proxy-rmq.service';
@@ -17,6 +18,7 @@ import { ResponseTicketDto } from './dtos/response-ticket.dto';
 import { RedisService } from '../redis/redis.service';
 import { lastValueFrom } from 'rxjs';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
+import { LockInterceptor } from '../common/interceptors/lock.interceptor';
 
 @Controller('ticket')
 export class TicketController {
@@ -96,35 +98,21 @@ export class TicketController {
   }
 
   @UseGuards(RateLimitGuard)
+  @UseInterceptors(LockInterceptor)
   @HttpCode(202)
   @Patch(':id/reserve-ticket')
   async reserve(@Param('id') id: string) {
-    await this.redisService.acquireLock(id);
-
-    try {
-      this.serviceTicketclientProxy.emit('reserve-ticket', id);
-    } catch (error: any) {
-      await this.redisService.releaseLock(id);
-      throw error;
-    }
-
+    this.serviceTicketclientProxy.emit('reserve-ticket', id);
     await this.redisService.delKeyCache(`ticket:${id}`);
     await this.redisService.delKeyCache('ticket:all');
   }
 
   @UseGuards(RateLimitGuard)
+  @UseInterceptors(LockInterceptor)
   @HttpCode(202)
   @Patch(':id/cancelReserve-ticket')
   async cancelReserve(@Param('id') id: string) {
-    await this.redisService.acquireLock(id);
-
-    try {
-      this.serviceTicketclientProxy.emit('cancelReserve-ticket', id);
-    } catch (error: any) {
-      await this.redisService.releaseLock(id);
-      throw error;
-    }
-
+    this.serviceTicketclientProxy.emit('cancelReserve-ticket', id);
     await this.redisService.delKeyCache(`ticket:${id}`);
     await this.redisService.delKeyCache('ticket:all');
     return;
