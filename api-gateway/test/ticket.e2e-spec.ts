@@ -136,7 +136,7 @@ describe('TicketController (e2e)', () => {
     });
   });
 
-  describe('GET /ticket/:id (findOne)', () => {
+  describe('GET /ticket/:id', () => {
     it('should return from microservice and cache it', async () => {
       const ticketId = '123';
       const mockTicket = { id: ticketId, number: 50 };
@@ -156,6 +156,22 @@ describe('TicketController (e2e)', () => {
         mockTicket,
         5,
       );
+    });
+  });
+
+  describe('DELETE /ticket/:id', () => {
+    it('should emit delete-ticket and clear specific and all cache', async () => {
+      const ticketId = '123';
+      const delCacheSpy = jest.spyOn(redisService, 'delKeyCache');
+
+      const response = await request(app.getHttpServer()).delete(
+        `/ticket/${ticketId}`,
+      );
+
+      expect(response.status).toBe(202);
+      expect(mockProxy.emit).toHaveBeenCalledWith('delete-ticket', ticketId);
+      expect(delCacheSpy).toHaveBeenCalledWith(`ticket:${ticketId}`);
+      expect(delCacheSpy).toHaveBeenCalledWith('ticket:all');
     });
   });
 });
