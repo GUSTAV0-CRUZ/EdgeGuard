@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   #INFRA
   redis:
@@ -52,6 +50,22 @@ services:
     restart: always
     env_file:
       - ./service-ticket/.env
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - edgeguard-network
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway-local
+    restart: always
+    ports:
+      - "8080:3000"
+    env_file:
+      - ./api-gateway/.env
     depends_on:
       - mongodb
       - rabbitmq
