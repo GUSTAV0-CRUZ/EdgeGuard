@@ -174,4 +174,51 @@ describe('TicketController (e2e)', () => {
       expect(delCacheSpy).toHaveBeenCalledWith('ticket:all');
     });
   });
+
+  describe('PATCH /ticket/:id/reserve-ticket', () => {
+    it('should emit reserve-ticket and clear cache', async () => {
+      const ticketId = '123';
+      const delCacheSpy = jest.spyOn(redisService, 'delKeyCache');
+
+      const response = await request(app.getHttpServer()).patch(
+        `/ticket/${ticketId}/reserve-ticket`,
+      );
+
+      expect(response.status).toBe(202);
+      expect(mockProxy.emit).toHaveBeenCalledWith('reserve-ticket', ticketId);
+      expect(delCacheSpy).toHaveBeenCalledWith(`ticket:${ticketId}`);
+      expect(delCacheSpy).toHaveBeenCalledWith('ticket:all');
+    });
+
+    it('should return 429 if rate limit is exceeded', async () => {
+      const ticketId = '123';
+      const redisClient = app.get(RedisClient);
+
+      jest.spyOn(redisClient, 'incr').mockResolvedValue(7);
+
+      const response = await request(app.getHttpServer()).patch(
+        `/ticket/${ticketId}/reserve-ticket`,
+      );
+
+      expect(response.status).toBe(429);
+      expect(mockProxy.emit).not.toHaveBeenCalled();
+    });
+
+    it('should return 409 if resource is locked', async () => {
+      const ticketId = '123';
+      const redisClient = app.get(RedisClient);
+
+      jest.spyOn(redisClient, 'incr').mockResolvedValue(1);
+      jest.spyOn(redisClient, 'set').mockResolvedValue(null);
+
+      const response = await request(app.getHttpServer()).patch(
+        `/ticket/${ticketId}/reserve-ticket`,
+      );
+
+      expect(response.status).toBe(409);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      expect(response.body?.message).toEqual(['conflict in required resource']);
+      expect(mockProxy.emit).not.toHaveBeenCalled();
+    });
+  });
 });
