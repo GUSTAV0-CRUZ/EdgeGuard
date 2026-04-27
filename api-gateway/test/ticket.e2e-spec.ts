@@ -17,6 +17,7 @@ import { RedisService } from '../src/redis/redis.service';
 import request from 'supertest';
 import { of } from 'rxjs';
 import { ClientProxyRmqService } from '../src/client-proxy-rmq/client-proxy-rmq.service';
+import { Response } from 'express';
 
 @Global()
 @Module({
@@ -219,6 +220,55 @@ describe('TicketController (e2e)', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(response.body?.message).toEqual(['conflict in required resource']);
       expect(mockProxy.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PATCH /ticket/:id/cancelReserve-ticket', () => {
+    it('should emit cancelReserve-ticket and clear cache', async () => {
+      const redisClient = app.get(RedisClient);
+      const ticketId = '123';
+
+      const delCacheSpy = jest.spyOn(redisService, 'delKeyCache');
+      jest.spyOn(redisClient, 'set').mockResolvedValue('OK');
+
+      const response = await request(app.getHttpServer()).patch(
+        `/ticket/${ticketId}/cancelReserve-ticket`,
+      );
+
+      expect(response.status).toBe(202);
+      expect(mockProxy.emit).toHaveBeenCalledWith(
+        'cancelReserve-ticket',
+        ticketId,
+      );
+      expect(delCacheSpy).toHaveBeenCalledWith(`ticket:${ticketId}`);
+      expect(delCacheSpy).toHaveBeenCalledWith('ticket:all');
+    });
+
+    it('should handle high load with multiple concurrent requests', async () => {
+      const ticketId = 'stress-test';
+
+      const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+      const requests = Array.from({ length: 10 }).map(
+        // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+        async (_, index): Promise<Response | any> => {
+          await delay(index * 10);
+
+          return (
+            request(app.getHttpServer())
+              .patch(`/ticket/${ticketId}/cancelReserve-ticket`)
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+              .catch((err: any) => err)
+          );
+        },
+      );
+
+      const responses = await Promise.all(requests);
+
+      responses.forEach((res) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect([202, 409, 429]).toContain(res?.status);
+      });
     });
   });
 });
