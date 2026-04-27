@@ -135,4 +135,27 @@ describe('TicketController (e2e)', () => {
       expect(proxySpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('GET /ticket/:id (findOne)', () => {
+    it('should return from microservice and cache it', async () => {
+      const ticketId = '123';
+      const mockTicket = { id: ticketId, number: 50 };
+      jest.spyOn(redisService, 'getCache').mockResolvedValue(null);
+      mockProxy.send.mockReturnValue(of(mockTicket));
+      const setCacheSpy = jest.spyOn(redisService, 'setCache');
+
+      const response = await request(app.getHttpServer()).get(
+        `/ticket/${ticketId}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockTicket);
+      expect(mockProxy.send).toHaveBeenCalledWith('findOne-ticket', ticketId);
+      expect(setCacheSpy).toHaveBeenCalledWith(
+        `ticket:${ticketId}`,
+        mockTicket,
+        5,
+      );
+    });
+  });
 });
