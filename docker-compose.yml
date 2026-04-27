@@ -51,7 +51,7 @@ services:
     env_file:
       - ./service-ticket/.env
     depends_on:
-      - mongodb
+      - redis
       - rabbitmq
     networks:
       - edgeguard-network
