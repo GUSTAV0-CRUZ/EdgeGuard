@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   Global,
@@ -13,6 +14,9 @@ import { AllExceptionFilter } from '../src/common/filters/all-exception.filter';
 import { RedisClient } from '../src/redis/providers/redis-client.provider';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { RedisService } from '../src/redis/redis.service';
+import request from 'supertest';
+import { of } from 'rxjs';
+import { ClientProxyRmqService } from '../src/client-proxy-rmq/client-proxy-rmq.service';
 
 @Global()
 @Module({
@@ -41,6 +45,11 @@ import { RedisService } from '../src/redis/redis.service';
 })
 class FakeRedisModule {}
 
+const mockProxy = {
+  send: jest.fn().mockReturnValue(of([])),
+  emit: jest.fn().mockReturnValue(of({})),
+};
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -52,7 +61,12 @@ describe('AppController (e2e)', () => {
         TicketModule,
         FakeRedisModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(ClientProxyRmqService)
+      .useValue({
+        getServiceTicketclientProxy: () => mockProxy,
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
 
@@ -62,5 +76,40 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('', () => {});
+  describe('GET /ticket', () => {
+    it('should fetch from microservice and save in cache', async () => {
+      const mockTickets = [{ id: '1', number: 1 }];
+      const redisService = app.get(RedisService);
+      const clientProxyService = app.get(ClientProxyRmqService);
+      const proxy = clientProxyService.getServiceTicketclientProxy();
+
+      jest.spyOn(redisService, 'getCache').mockResolvedValue(null);
+      jest.spyOn(proxy, 'send').mockReturnValue(of(mockTickets));
+      const setCacheSpy = jest.spyOn(redisService, 'setCache');
+
+      const response = await request(app.getHttpServer()).get('/ticket');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockTickets);
+      expect(proxy.send).toHaveBeenCalledWith('findAll-ticket', '');
+      expect(setCacheSpy).toHaveBeenCalledWith('ticket:all', mockTickets, 30);
+    });
+
+    it('should return data from cache if exists and not call any microsservice', async () => {
+      const cachedData = [{ id: 'cache-1', number: 1 }];
+      const redisService = app.get(RedisService);
+      const clientProxyService = app.get(ClientProxyRmqService);
+      const proxy = clientProxyService.getServiceTicketclientProxy();
+
+      jest.clearAllMocks();
+      jest.spyOn(redisService, 'getCache').mockResolvedValue(cachedData);
+      const proxySpy = jest.spyOn(proxy, 'send');
+
+      const response = await request(app.getHttpServer()).get('/ticket');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(cachedData);
+      expect(proxySpy).not.toHaveBeenCalled();
+    });
+  });
 });
