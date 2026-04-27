@@ -50,10 +50,13 @@ const mockProxy = {
   emit: jest.fn().mockReturnValue(of({})),
 };
 
-describe('AppController (e2e)', () => {
+describe('TicketController (e2e)', () => {
   let app: INestApplication<App>;
+  let redisService: RedisService;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
@@ -73,12 +76,33 @@ describe('AppController (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalFilters(new AllExceptionFilter());
 
+    redisService = app.get(RedisService);
+
     await app.init();
   });
 
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('POST /ticket', () => {
+    it('should emit create-ticket and clear cache', async () => {
+      const createDto = { number: 100 };
+      const delCacheSpy = jest.spyOn(redisService, 'delKeyCache');
+
+      const response = await request(app.getHttpServer())
+        .post('/ticket')
+        .send(createDto);
+
+      expect(response.status).toBe(202);
+      expect(mockProxy.emit).toHaveBeenCalledWith('create-ticket', createDto);
+      expect(delCacheSpy).toHaveBeenCalledWith('ticket:all');
+    });
+  });
+
   describe('GET /ticket', () => {
-    it('should fetch from microservice and save in cache', async () => {
-      const mockTickets = [{ id: '1', number: 1 }];
+    it('should fetch from microservice and save to the cache', async () => {
+      const mockTickets = [{ id: '1', number: 'Ticket Teste' }];
       const redisService = app.get(RedisService);
       const clientProxyService = app.get(ClientProxyRmqService);
       const proxy = clientProxyService.getServiceTicketclientProxy();
@@ -101,7 +125,6 @@ describe('AppController (e2e)', () => {
       const clientProxyService = app.get(ClientProxyRmqService);
       const proxy = clientProxyService.getServiceTicketclientProxy();
 
-      jest.clearAllMocks();
       jest.spyOn(redisService, 'getCache').mockResolvedValue(cachedData);
       const proxySpy = jest.spyOn(proxy, 'send');
 
