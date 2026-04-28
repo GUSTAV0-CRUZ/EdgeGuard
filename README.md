@@ -212,9 +212,6 @@ Cobertura para cenários críticos:
 - rate limit throttling
 - mocks globais de infraestrutura
 
-### 📷 Evidência dos Testes
-![Tests](./docs/images/e2e-tests.png)
-
 ---
 
 ### ⚙️ Testes Unitários (Service Ticket)
@@ -222,6 +219,9 @@ Cobertura para cenários críticos:
 - regras de negócio
 - persistência isolada
 - mensageria mockada
+
+### 📷 Evidência dos Testes
+![Tests](./docs/images/tests.png)
 
 ---
 
